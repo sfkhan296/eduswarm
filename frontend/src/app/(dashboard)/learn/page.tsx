@@ -5,17 +5,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PromptInput } from "@/components/learn/PromptInput";
 import { LearningSession } from "@/components/learn/LearningSession";
 import { AgentStatusBar } from "@/components/learn/AgentStatusBar";
+import { SessionHistorySidebar } from "@/components/layout/SessionHistorySidebar";
 import type { LearningResponse } from "@/types/api";
+import { AlertCircle } from "lucide-react";
 
 export default function LearnPage() {
   const [response, setResponse] = useState<LearningResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState("");
 
   const handleSubmit = async (prompt: string) => {
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setCurrentPrompt(prompt);
 
     try {
       const res = await fetch("/api/backend/api/v1/learn/", {
@@ -24,9 +28,7 @@ export default function LearnPage() {
         body: JSON.stringify({ prompt }),
       });
 
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Request failed: ${res.statusText}`);
 
       const data: LearningResponse = await res.json();
       setResponse(data);
@@ -39,33 +41,55 @@ export default function LearnPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
+        className="space-y-1"
       >
-        <h1 className="text-3xl font-bold tracking-tight mb-1">
+        <h1 className="text-3xl font-bold tracking-tight">
           What do you want to learn?
         </h1>
         <p className="text-muted-foreground">
-          Enter a topic and our AI agents will build a personalized lesson just
-          for you.
+          Enter any topic and our AI agents will build a personalized lesson just for you.
         </p>
       </motion.div>
 
-      <PromptInput onSubmit={handleSubmit} isLoading={isLoading} />
+      {/* Prompt input */}
+      <PromptInput
+        onSubmit={handleSubmit}
+        isLoading={isLoading}
+        defaultValue={currentPrompt}
+      />
 
-      {isLoading && <AgentStatusBar />}
-
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive text-sm">
-          {error}
-        </div>
-      )}
-
+      {/* Agent progress */}
       <AnimatePresence>
-        {response && <LearningSession data={response} />}
+        {isLoading && <AgentStatusBar />}
       </AnimatePresence>
+
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-start gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-destructive text-sm"
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Result */}
+      <AnimatePresence>
+        {response && <LearningSession data={response} prompt={currentPrompt} />}
+      </AnimatePresence>
+
+      {/* Session history sidebar */}
+      <SessionHistorySidebar onSelectSession={handleSubmit} />
     </div>
   );
 }

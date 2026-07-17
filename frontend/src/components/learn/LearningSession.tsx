@@ -4,13 +4,25 @@ import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentView } from "./ContentView";
 import { QuizView } from "./QuizView";
-import type { LearningResponse } from "@/types/api";
+import type { LearningResponse, LearnerLevel } from "@/types/api";
+import { Baby, GraduationCap, Briefcase, BookOpen, ListChecks } from "lucide-react";
 
 interface LearningSessionProps {
   data: LearningResponse;
+  prompt: string;
 }
 
-export function LearningSession({ data }: LearningSessionProps) {
+const LEVEL_CONFIG: Record<LearnerLevel, { icon: typeof Baby; color: string; bg: string; label: string }> = {
+  child: { icon: Baby, color: "text-yellow-600", bg: "bg-yellow-100 dark:bg-yellow-900/30", label: "Child" },
+  teen: { icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/30", label: "Teen" },
+  professional: { icon: Briefcase, color: "text-violet-600", bg: "bg-violet-100 dark:bg-violet-900/30", label: "Professional" },
+};
+
+export function LearningSession({ data, prompt }: LearningSessionProps) {
+  const level = data.learner_profile.level;
+  const config = LEVEL_CONFIG[level];
+  const Icon = config.icon;
+
   return (
     <motion.div
       key="session"
@@ -18,30 +30,44 @@ export function LearningSession({ data }: LearningSessionProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-4"
+      className="space-y-5"
     >
-      {/* Learner profile badge */}
-      <div className="flex items-center gap-3">
-        <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary capitalize">
-          {data.learner_profile.level} learner
-        </span>
-        <span className="text-sm text-muted-foreground">
-          {data.learner_profile.reasoning}
-        </span>
-      </div>
+      {/* Learner profile card */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex items-start gap-4 rounded-xl border bg-card p-4 shadow-sm"
+      >
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.bg}`}>
+          <Icon className={`h-5 w-5 ${config.color}`} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={`text-sm font-semibold ${config.color}`}>{config.label} Learner</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{data.learner_profile.reasoning}</p>
+        </div>
+      </motion.div>
 
+      {/* Tabs */}
       <Tabs defaultValue="content">
-        <TabsList>
-          <TabsTrigger value="content">Lesson</TabsTrigger>
-          <TabsTrigger value="quiz">Quiz</TabsTrigger>
+        <TabsList className="w-full">
+          <TabsTrigger value="content" className="flex-1 gap-2">
+            <BookOpen className="h-4 w-4" />
+            Lesson
+          </TabsTrigger>
+          <TabsTrigger value="quiz" className="flex-1 gap-2">
+            <ListChecks className="h-4 w-4" />
+            Quiz ({data.quiz.length} questions)
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="content" className="mt-4">
-          <ContentView content={data.content} uiTheme={data.ui_personalization} />
+          <ContentView content={data.content} uiTheme={data.ui_personalization} level={level} />
         </TabsContent>
 
         <TabsContent value="quiz" className="mt-4">
-          <QuizView questions={data.quiz} />
+          <QuizView questions={data.quiz} level={level} />
         </TabsContent>
       </Tabs>
     </motion.div>
