@@ -12,7 +12,7 @@ a lesson, a quiz, and a UI theme tuned to your level — child, teen, or profess
 |------------|-----------------------------------------|
 | Frontend   | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion |
 | Backend    | FastAPI, Python 3.11                    |
-| AI         | CrewAI + OpenAI (gpt-4o-mini)           |
+| AI         | CrewAI + Groq (llama-3.1-8b-instant)   |
 | Auth       | Clerk                                   |
 | Database   | Supabase (PostgreSQL)                   |
 | Container  | Docker Compose                          |
@@ -128,7 +128,7 @@ User Prompt
 - Node.js 20+
 - Python 3.11+
 - Docker & Docker Compose (optional but recommended)
-- An [OpenAI API key](https://platform.openai.com/api-keys)
+- A free [Groq API key](https://console.groq.com) (no credit card required)
 - A [Clerk](https://clerk.com) account
 - A [Supabase](https://supabase.com) project
 
@@ -150,7 +150,7 @@ cp frontend/.env.local.example frontend/.env.local
 **Backend:**
 ```bash
 cp backend/.env.example backend/.env
-# Fill in OPENAI_API_KEY, SUPABASE_URL, SUPABASE_KEY, CLERK_* values
+# Fill in GROQ_API_KEY, SUPABASE_URL, SUPABASE_KEY, CLERK_* values
 ```
 
 ---
