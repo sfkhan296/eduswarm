@@ -13,7 +13,7 @@ def build_quiz_generation_agent() -> Agent:
             "You craft questions that check genuine comprehension, not just recall, "
             "and you always keep the difficulty level appropriate for the learner."
         ),
-        llm="groq/llama-3.1-8b-instant",
+        llm="groq/llama-3.3-70b-versatile",
         verbose=True,
         allow_delegation=False,
     )

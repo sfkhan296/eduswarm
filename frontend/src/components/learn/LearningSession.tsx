@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentView } from "./ContentView";
 import { QuizView } from "./QuizView";
+import { SpaceQuiz } from "./SpaceQuiz";
+import { FollowUpChat } from "./FollowUpChat";
 import type { LearningResponse, LearnerLevel } from "@/types/api";
-import { Baby, GraduationCap, Briefcase, BookOpen, ListChecks } from "lucide-react";
+import { Baby, GraduationCap, Briefcase, BookOpen, Rocket, ListChecks, Globe } from "lucide-react";
 
 interface LearningSessionProps {
   data: LearningResponse;
@@ -22,6 +25,8 @@ export function LearningSession({ data, prompt }: LearningSessionProps) {
   const level = data.learner_profile.level;
   const config = LEVEL_CONFIG[level];
   const Icon = config.icon;
+  const useSpaceQuiz = level === "child" || level === "teen";
+  const [activeTab, setActiveTab] = useState("content");
 
   return (
     <motion.div
@@ -44,21 +49,29 @@ export function LearningSession({ data, prompt }: LearningSessionProps) {
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <span className={`text-sm font-semibold ${config.color}`}>{config.label} Learner</span>
+            {data.detected_language && data.detected_language !== "en" && (
+              <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <Globe className="h-3 w-3" />
+                {data.detected_language.toUpperCase()}
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">{data.learner_profile.reasoning}</p>
         </div>
       </motion.div>
 
       {/* Tabs */}
-      <Tabs defaultValue="content">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full">
           <TabsTrigger value="content" className="flex-1 gap-2">
             <BookOpen className="h-4 w-4" />
             Lesson
           </TabsTrigger>
           <TabsTrigger value="quiz" className="flex-1 gap-2">
-            <ListChecks className="h-4 w-4" />
-            Quiz ({data.quiz.length} questions)
+            {useSpaceQuiz
+              ? <><Rocket className="h-4 w-4" /> Space Quiz 🚀</>
+              : <><ListChecks className="h-4 w-4" /> Quiz ({data.quiz.length} questions)</>
+            }
           </TabsTrigger>
         </TabsList>
 
@@ -67,9 +80,15 @@ export function LearningSession({ data, prompt }: LearningSessionProps) {
         </TabsContent>
 
         <TabsContent value="quiz" className="mt-4">
-          <QuizView questions={data.quiz} level={level} />
+          {useSpaceQuiz
+            ? <SpaceQuiz questions={data.quiz} onGoToLesson={() => setActiveTab("content")} />
+            : <QuizView questions={data.quiz} level={level} />
+          }
         </TabsContent>
       </Tabs>
+
+      {/* Follow-up chat */}
+      <FollowUpChat topic={prompt} level={level} language={data.detected_language} />
     </motion.div>
   );
 }

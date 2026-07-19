@@ -13,7 +13,7 @@ def build_content_generation_agent() -> Agent:
             "from kindergartners to senior software engineers. You adapt tone, vocabulary, "
             "and depth effortlessly. Your lessons are concise, accurate, and memorable."
         ),
-        llm="groq/llama-3.1-8b-instant",
+        llm="groq/llama-3.3-70b-versatile",
         verbose=True,
         allow_delegation=False,
     )

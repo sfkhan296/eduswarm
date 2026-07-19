@@ -63,3 +63,21 @@ async def get_user_sessions(user_id: str) -> list[dict]:
     except Exception:
         logger.exception("Failed to fetch sessions for user=%s", user_id)
         return []
+
+
+async def get_session_by_id(session_id: str, user_id: str) -> dict | None:
+    """Return a single session by ID, scoped to the requesting user."""
+    try:
+        client = get_supabase_client()
+        data = (
+            client.table(TABLE)
+            .select("*")
+            .eq("id", session_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+        return data.data
+    except Exception:
+        logger.exception("Failed to fetch session id=%s user=%s", session_id, user_id)
+        return None

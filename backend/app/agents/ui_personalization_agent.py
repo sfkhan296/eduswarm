@@ -13,7 +13,7 @@ def build_ui_personalization_agent() -> Agent:
             "outcomes across age groups. You know that children learn better with bright, "
             "playful interfaces while professionals prefer clean, minimal layouts."
         ),
-        llm="groq/llama-3.1-8b-instant",
+        llm="groq/llama-3.3-70b-versatile",
         verbose=True,
         allow_delegation=False,
     )

@@ -14,7 +14,7 @@ def build_learner_analysis_agent() -> Agent:
             "assessing learner readiness. You can instantly gauge whether someone "
             "needs simple analogies, intermediate explanations, or advanced technical depth."
         ),
-        llm="groq/llama-3.1-8b-instant",
+        llm="groq/llama-3.3-70b-versatile",
         verbose=True,
         allow_delegation=False,
     )

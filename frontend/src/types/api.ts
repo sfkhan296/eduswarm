@@ -45,4 +45,5 @@ export interface LearningResponse {
   content: ContentSection[];
   quiz: QuizQuestion[];
   ui_personalization: UIPersonalization;
+  detected_language: string;
 }

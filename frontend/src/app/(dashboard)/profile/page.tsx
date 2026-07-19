@@ -10,10 +10,11 @@ export default function ProfilePage() {
 
   if (!isLoaded) return null;
 
-  const meta = user?.publicMetadata as {
+  const meta = user?.unsafeMetadata as {
     age?: string;
     learning_goal?: string;
     preferred_language?: string;
+    onboarded?: boolean;
   } | undefined;
 
   return (

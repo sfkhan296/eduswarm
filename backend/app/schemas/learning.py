@@ -13,6 +13,7 @@ class LearningRequest(BaseModel):
         max_length=500,
         examples=["Teach me Java.", "Explain machine learning to a 10-year-old."],
     )
+    language: str = Field(default="en", description="ISO 639-1 language code chosen by the user.")
 
 
 # ─── Learner Analysis Agent ──────────────────────────────────────────────────
@@ -23,6 +24,7 @@ LearnerLevel = Literal["child", "teen", "professional"]
 class LearnerProfile(BaseModel):
     level: LearnerLevel
     reasoning: str = Field(description="Why the agent classified the learner this way.")
+    detected_language: str = Field(default="en", description="ISO 639-1 language code detected from the prompt.")
 
 
 # ─── Content Generation Agent ────────────────────────────────────────────────
@@ -57,3 +59,4 @@ class LearningResponse(BaseModel):
     content: list[ContentSection]
     quiz: list[QuizQuestion]
     ui_personalization: UIPersonalization
+    detected_language: str = Field(default="en", description="Language the lesson was delivered in.")

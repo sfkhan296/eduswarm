@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Brain, BookOpen, ListChecks, Palette } from "lucide-react";
 
 const AGENTS = [
@@ -10,7 +11,31 @@ const AGENTS = [
   { name: "UI Personalization", icon: Palette, color: "text-orange-500", bg: "bg-orange-500/10" },
 ];
 
+const LOADING_QUIPS = [
+  "Brewing your brain fuel… ☕",
+  "Teaching the AIs to teach you… meta, right? 🤖",
+  "Consulting the robot council… 🤝",
+  "Summoning knowledge from the void… ✨",
+  "Asking very smart robots very hard questions… 🧠",
+  "Your lesson is being assembled by tiny digital elves… 🧝",
+  "Hold tight — this is the fun part (for us)… 🎉",
+  "Turning caffeine into curriculum… ⚡",
+  "Almost there! (The robots are being dramatic) 🎭",
+  "Loading… please enjoy this moment of zen 🧘",
+];
+
+function useRotatingQuip() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % LOADING_QUIPS.length), 3000);
+    return () => clearInterval(id);
+  }, []);
+  return LOADING_QUIPS[index];
+}
+
 export function AgentStatusBar() {
+  const quip = useRotatingQuip();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -24,9 +49,18 @@ export function AgentStatusBar() {
           transition={{ repeat: Infinity, duration: 1.5 }}
           className="h-2 w-2 rounded-full bg-primary"
         />
-        <p className="text-sm font-medium text-muted-foreground">
-          AI agents are working on your lesson…
-        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={quip}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.35 }}
+            className="text-sm font-medium text-muted-foreground"
+          >
+            {quip}
+          </motion.p>
+        </AnimatePresence>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

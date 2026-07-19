@@ -5,15 +5,18 @@ import { UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Zap } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Navbar() {
+  const { t } = useLanguage();
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md"
     >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 pl-[4.5rem]">
         {/* Brand */}
         <Link href="/learn" className="flex items-center gap-2 font-bold text-xl">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -30,19 +33,19 @@ export function Navbar() {
             href="/learn"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md hover:bg-muted"
           >
-            Learn
+            {t("nav_learn")}
           </Link>
           <Link
             href="/history"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md hover:bg-muted"
           >
-            History
+            {t("nav_history")}
           </Link>
           <Link
             href="/profile"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md hover:bg-muted"
           >
-            Profile
+            {t("nav_profile")}
           </Link>
           <ThemeToggle />
           <UserButton afterSignOutUrl="/" />
