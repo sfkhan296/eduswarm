@@ -45,8 +45,10 @@ EduSwarm adapts not just the content, but the entire learning experience — ton
       <sub>Backend Developer</sub>
     </td>
     <td align="center">
-      <img src="https://github.com/identicons/pravina-nagvanshi.png" width="80" alt="Pravina Nagvanshi"/><br/>
-      <sub><b>Pravina Nagvanshi</b></sub><br/>
+      <a href="https://github.com/2411cs030384-Pravina">
+        <img src="https://github.com/2411cs030384-Pravina.png" width="80" alt="Pravina Nagvanshi"/><br/>
+        <sub><b>Pravina Nagvanshi</b></sub>
+      </a><br/>
       <sub>Database &amp; Integration</sub>
     </td>
   </tr>
