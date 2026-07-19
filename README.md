@@ -14,13 +14,41 @@ EduSwarm adapts not just the content, but the entire learning experience — ton
 
 **Team Name:** DevOops!
 
-| Name | Role |
-|------|------|
-| Soha Firdaus Khan | Team Lead / Full Stack |
-| Potti Harshitha | Frontend Developer |
-| Reddygari Deekshitha | Backend Developer |
-| Rathikanti Tejaswini | AI / Agent Engineering |
-| Pravina Nagvanshi | Database & Integration |
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/sfkhan296">
+        <img src="https://github.com/sfkhan296.png" width="80" alt="Soha Firdaus Khan"/><br/>
+        <sub><b>Soha Firdaus Khan</b></sub>
+      </a><br/>
+      <sub>Team Lead / Full Stack</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/harshitha-potti">
+        <img src="https://github.com/harshitha-potti.png" width="80" alt="Potti Harshitha"/><br/>
+        <sub><b>Potti Harshitha</b></sub>
+      </a><br/>
+      <sub>Frontend Developer</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Tejaswini-Rathikanti2">
+        <img src="https://github.com/Tejaswini-Rathikanti2.png" width="80" alt="Rathikanti Tejaswini"/><br/>
+        <sub><b>Rathikanti Tejaswini</b></sub>
+      </a><br/>
+      <sub>AI / Agent Engineering</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/identicons/reddygari-deekshitha.png" width="80" alt="Reddygari Deekshitha"/><br/>
+      <sub><b>Reddygari Deekshitha</b></sub><br/>
+      <sub>Backend Developer</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/identicons/pravina-nagvanshi.png" width="80" alt="Pravina Nagvanshi"/><br/>
+      <sub><b>Pravina Nagvanshi</b></sub><br/>
+      <sub>Database &amp; Integration</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
