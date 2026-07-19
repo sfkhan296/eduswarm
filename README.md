@@ -1,8 +1,26 @@
 # EduSwarm
 
+> Built by **Team DevOops!** for a hackathon submission.
+
 A personalized learning platform powered by a swarm of AI agents.
 Enter any learning prompt and four specialized agents collaborate to generate
 a lesson, a quiz, and a UI theme tuned to your level — child, teen, or professional.
+
+EduSwarm adapts not just the content, but the entire learning experience — tone, color scheme, and complexity — based on who you are. Powered by CrewAI and Groq's blazing-fast LLM inference, it delivers personalized education in seconds.
+
+---
+
+## Team
+
+**Team Name:** DevOops!
+
+| Name | Role |
+|------|------|
+| Soha Firdaus Khan | Team Lead / Full Stack |
+| Potti Harshitha | Frontend Developer |
+| Reddygari Deekshitha | Backend Developer |
+| Rathikanti Tejaswini | AI / Agent Engineering |
+| Pravina Nagvanshi | Database & Integration |
 
 ---
 
