@@ -38,8 +38,10 @@ EduSwarm adapts not just the content, but the entire learning experience — ton
       <sub>AI / Agent Engineering</sub>
     </td>
     <td align="center">
-      <img src="https://github.com/identicons/reddygari-deekshitha.png" width="80" alt="Reddygari Deekshitha"/><br/>
-      <sub><b>Reddygari Deekshitha</b></sub><br/>
+      <a href="https://github.com/Deekshita-12">
+        <img src="https://github.com/Deekshita-12.png" width="80" alt="Reddygari Deekshitha"/><br/>
+        <sub><b>Reddygari Deekshitha</b></sub>
+      </a><br/>
       <sub>Backend Developer</sub>
     </td>
     <td align="center">
