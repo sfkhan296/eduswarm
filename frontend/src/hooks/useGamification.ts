@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export interface GamificationState {
   totalXP: number;
@@ -12,8 +13,9 @@ export interface GamificationState {
   totalAnswered: number;
 }
 
-// XP needed to reach each level
 export const XP_PER_LEVEL = 100;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const STORAGE_KEY = "eduswarm_gamification_v2";
 
 export const BADGE_DEFS: Record<string, { emoji: string; label: string; description: string }> = {
   first_answer:   { emoji: "🎯", label: "First Shot",     description: "Answered your first question!" },
@@ -28,8 +30,6 @@ export const BADGE_DEFS: Record<string, { emoji: string; label: string; descript
   hundred_xp:     { emoji: "💯", label: "Century",        description: "Earned 100 XP!" },
   speed_demon:    { emoji: "🚀", label: "Speed Demon",    description: "Answered in under 5 seconds!" },
 };
-
-const STORAGE_KEY = "eduswarm_gamification_v2";
 
 const DEFAULT_STATE: GamificationState = {
   totalXP: 0,
@@ -46,18 +46,67 @@ export function useGamification() {
   const [newBadge, setNewBadge] = useState<string | null>(null);
   const [xpGained, setXpGained] = useState(0);
   const [leveledUp, setLeveledUp] = useState(false);
+  const { getToken, isSignedIn } = useAuth();
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load from Supabase on sign-in, fallback to localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setState(JSON.parse(saved));
-    } catch {}
-  }, []);
+    if (!isSignedIn) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setState(JSON.parse(saved));
+      } catch {}
+      return;
+    }
 
-  const save = (next: GamificationState) => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_BASE}/api/v1/preferences/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.gamification) {
+            setState(data.gamification as GamificationState);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.gamification));
+          }
+        }
+      } catch {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) setState(JSON.parse(saved));
+        } catch {}
+      }
+    })();
+  }, [isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced save to Supabase — waits 2s after last update to batch writes
+  const persistToSupabase = useCallback(async (next: GamificationState) => {
+    if (!isSignedIn) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const token = await getToken();
+        await fetch(`${API_BASE}/api/v1/preferences/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ gamification: next }),
+        });
+      } catch {
+        // Silent fail — localStorage is already updated
+      }
+    }, 2000);
+  }, [isSignedIn, getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = useCallback((next: GamificationState) => {
     setState(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
-  };
+    persistToSupabase(next);
+  }, [persistToSupabase]);
 
   const addXP = (xp: number, isCorrect: boolean, isFast = false, isPerfect = false) => {
     setState((prev) => {
@@ -105,7 +154,11 @@ export function useGamification() {
         totalCorrect: newCorrect,
         totalAnswered: newAnswered,
       };
+
+      // Persist in background
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      persistToSupabase(next);
+
       return next;
     });
   };

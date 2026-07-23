@@ -15,6 +15,17 @@ export function ContentView({ content, uiTheme, level }: ContentViewProps) {
   const isChild = level === "child";
   const { speak, stop, speaking } = useTTS();
 
+  // Apply UI personalization from AI agent
+  const fontSize =
+    uiTheme.font_size === "lg" ? "text-lg"
+    : uiTheme.font_size === "sm" ? "text-xs"
+    : uiTheme.font_size === "xl" ? "text-xl"
+    : "text-sm";
+
+  const accentColor = uiTheme.color_scheme || "#6366f1";
+  const isPlayful = uiTheme.tone === "playful";
+  const isProfessional = uiTheme.tone === "professional";
+
   // Read the full lesson aloud
   const readAll = () => {
     if (speaking) { stop(); return; }
@@ -32,7 +43,17 @@ export function ContentView({ content, uiTheme, level }: ContentViewProps) {
   return (
     <div className="space-y-5">
       {/* Read all button */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        {/* Tone badge */}
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full font-medium border
+            ${isPlayful ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
+            : isProfessional ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+            : "bg-muted text-muted-foreground border-border"}`}
+        >
+          {isPlayful ? "🎮 Playful Mode" : isProfessional ? "💼 Professional Mode" : "📚 Balanced Mode"}
+        </span>
+
         <button
           onClick={readAll}
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all
@@ -54,19 +75,22 @@ export function ContentView({ content, uiTheme, level }: ContentViewProps) {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.08 }}
-          className={`rounded-xl border bg-card p-5 shadow-sm ${isChild ? "border-yellow-200 dark:border-yellow-900/50" : ""}`}
+          className={`rounded-xl border bg-card p-5 shadow-sm
+            ${isPlayful ? "border-yellow-200 dark:border-yellow-900/50"
+            : isProfessional ? "border-blue-200 dark:border-blue-900/50"
+            : "border-border"}`}
+          style={{ borderLeftColor: accentColor, borderLeftWidth: "3px" }}
         >
           {/* Section header */}
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold
-                ${isChild
-                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400"
-                  : "bg-primary/10 text-primary"}`}
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ backgroundColor: accentColor }}
               >
                 {i + 1}
               </span>
-              <h2 className={`font-semibold truncate ${isChild ? "text-xl" : "text-base"}`}>
+              <h2 className={`font-semibold truncate ${isChild || isPlayful ? "text-xl" : isProfessional ? "text-base" : "text-base"}`}>
                 {section.title}
               </h2>
             </div>
@@ -82,7 +106,7 @@ export function ContentView({ content, uiTheme, level }: ContentViewProps) {
           </div>
 
           {/* Body */}
-          <p className={`text-muted-foreground leading-relaxed ${isChild ? "text-base" : "text-sm"}`}>
+          <p className={`text-muted-foreground leading-relaxed ${fontSize}`}>
             {section.body}
           </p>
 
