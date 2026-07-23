@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Presentation, FileText, Code2, Music, Video, Clapperboard,
+  Presentation, FileText, Code2, Music, Video,
   Globe, X, Loader2, Sparkles, Copy, Check,
   Download,
 } from "lucide-react";
@@ -725,12 +725,242 @@ Voice style: ${voiceGender}. Respond in language: ${lang}.`,
   );
 }
 
-// ─── Video Panel ──────────────────────────────────────────────────────────────
+// ─── Unified Video Panel (Original + Animation merged) ───────────────────────
 const VIDEO_STYLES = [
-  { id:"animated",  label:"Animated",  icon:"🎨" },
-  { id:"original",  label:"Original",  icon:"🎬" },
+  { id:"original",  label:"Original",  icon:"🎬", desc:"Live-action explainer with narrator voice" },
+  { id:"animated",  label:"Animation", icon:"🎨", desc:"Cartoon-style with character scenes"       },
 ];
 const VOICE_TYPES = [
+  { id:"male",   label:"Male",   icon:"👨" },
+  { id:"female", label:"Female", icon:"👩" },
+  { id:"boy",    label:"Boy",    icon:"👦" },
+  { id:"girl",   label:"Girl",   icon:"👧" },
+];
+const DURATIONS = [1,2,3,5,10];
+const CARTOON_STYLES = [
+  { id:"anime",    label:"Anime",       icon:"⛩️",  color:"text-red-500",    bg:"bg-red-500/10"    },
+  { id:"tomjerry", label:"Tom & Jerry", icon:"🐭",  color:"text-yellow-500", bg:"bg-yellow-500/10" },
+  { id:"dora",     label:"Dora",        icon:"🗺️",  color:"text-orange-500", bg:"bg-orange-500/10" },
+  { id:"doraemon", label:"Doraemon",    icon:"🤖",  color:"text-blue-500",   bg:"bg-blue-500/10"   },
+  { id:"heidi",    label:"Heidi",       icon:"⛰️",  color:"text-green-500",  bg:"bg-green-500/10"  },
+];
+
+function VideoPanel({ topic: initTopic, lang }: { topic: string; lang: string }) {
+  const { t } = useLanguage();
+  const [topic, setTopic]               = useState(initTopic);
+  const [videoType, setVideoType]       = useState<"original"|"animated">("original");
+  const [voice, setVoice]               = useState("female");
+  const [duration, setDuration]         = useState(3);
+  const [cartoonStyle, setCartoonStyle] = useState("doraemon");
+  const [script, setScript]             = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [copied, setCopied]             = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [didLoading, setDidLoading]     = useState(false);
+  const [didVideoUrl, setDidVideoUrl]   = useState("");
+
+  useEffect(()=>{ setTopic(initTopic); }, [initTopic]);
+
+  const selectedCartoon = CARTOON_STYLES.find(c=>c.id===cartoonStyle)!;
+
+  const generate = async () => {
+    if (!topic.trim()) return;
+    setLoading(true); setScript(""); setDidVideoUrl("");
+    try {
+      const isAnim = videoType === "animated";
+      const message = isAnim
+        ? `Write a ${duration}-minute animated educational explainer in the style of "${selectedCartoon.label}" about: "${topic}".
+Format each scene as:
+[Scene N]
+Style: ${selectedCartoon.label} animation
+Setting: ...
+Characters: ...
+Action: ...
+Dialogue: ...
+Educational moment: ...
+Duration: ~Xs
+
+Make it fun, age-appropriate, and educational. Respond in language: ${lang}.`
+        : `Write a ${duration}-minute live-action educational video script about: "${topic}".
+Voice: ${voice}. Format each scene as:
+[Scene N] Visual: ... | Narrator (${voice} voice): ... | Duration: ~Xs
+Keep tone engaging and educational. Respond in language: ${lang}.`;
+
+      const res = await fetch("/api/backend/api/v1/chat/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ message, topic, level: isAnim ? "child" : "professional", language: lang, history:[] }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setScript(data.reply);
+    } catch { setScript("⚠️ Generation failed."); }
+    finally { setLoading(false); }
+  };
+
+  const download = () => {
+    const blob = new Blob([script], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`${topic.slice(0,40)}-video-script.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadVideo = async () => {
+    if (!script.trim()) return;
+    setVideoLoading(true);
+    try {
+      const res = await fetch("/api/backend/api/v1/video/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ script, language: lang, style: videoType==="animated" ? cartoonStyle : "original", topic }),
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download="eduswarm_video.mp4"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert("Video generation failed. Please try again."); }
+    finally { setVideoLoading(false); }
+  };
+
+  const generateDidVideo = async () => {
+    if (!script.trim()) return;
+    setDidLoading(true); setDidVideoUrl("");
+    try {
+      const res = await fetch("/api/backend/api/v1/did-video/", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ script, language: lang, voice, topic }),
+      });
+      if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.detail||`Error ${res.status}`); }
+      const data = await res.json();
+      setDidVideoUrl(data.video_url);
+    } catch (err: any) { alert(`Avatar video failed: ${err.message}`); }
+    finally { setDidLoading(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground rounded-lg bg-muted/50 px-3 py-2">
+        Choose Original or Animation, configure options, then generate your script and video.
+      </p>
+
+      {/* Topic */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("topic_label")}</label>
+        <input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="e.g. How black holes work, Newton's laws…"
+          className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"/>
+      </div>
+
+      {/* Video type toggle */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Video Type</label>
+        <div className="grid grid-cols-2 gap-2">
+          {VIDEO_STYLES.map(s=>(
+            <button key={s.id} onClick={()=>{ setVideoType(s.id as any); setScript(""); setDidVideoUrl(""); }}
+              className={`flex flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all
+                ${videoType===s.id
+                  ? "border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                  : "border-border hover:border-primary/30 hover:bg-muted/50"}`}>
+              <span className="text-2xl">{s.icon}</span>
+              <span>{s.label}</span>
+              <span className="text-[10px] text-muted-foreground font-normal text-center leading-tight">{s.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Duration */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Duration (minutes)</label>
+        <div className="flex gap-2 flex-wrap">
+          {DURATIONS.map(d=>(
+            <button key={d} onClick={()=>setDuration(d)}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-all
+                ${duration===d ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/30"}`}>
+              {d} min
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Original-only: Voice Type */}
+      {videoType === "original" && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Narrator Voice</label>
+          <div className="grid grid-cols-2 gap-2">
+            {VOICE_TYPES.map(v=>(
+              <button key={v.id} onClick={()=>setVoice(v.id)}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all
+                  ${voice===v.id ? "border-pink-400 bg-pink-500/10 text-pink-600 dark:text-pink-400" : "border-border hover:border-primary/30 hover:bg-muted/50"}`}>
+                <span>{v.icon}</span>{v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Animation-only: Cartoon Style */}
+      {videoType === "animated" && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cartoon Style</label>
+          <div className="grid grid-cols-1 gap-2">
+            {CARTOON_STYLES.map(c=>(
+              <motion.button key={c.id} onClick={()=>setCartoonStyle(c.id)}
+                whileHover={{scale:1.01}} whileTap={{scale:0.98}}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all
+                  ${cartoonStyle===c.id ? `border-current ${c.bg} ${c.color} font-semibold` : "border-border hover:border-primary/30 hover:bg-muted/50"}`}>
+                <span className="text-xl">{c.icon}</span>
+                <span className="text-sm">{c.label}</span>
+                {cartoonStyle===c.id && <Check className="h-3.5 w-3.5 ml-auto shrink-0"/>}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Button onClick={generate} disabled={loading||!topic.trim()} className="w-full gap-2">
+        {loading ? <><Loader2 className="h-4 w-4 animate-spin"/>{t("learn_generating")}</> : <><Sparkles className="h-4 w-4"/>Generate Script</>}
+      </Button>
+
+      <AnimatePresence>
+        {script && (
+          <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">{t("preview")}</span>
+              <div className="flex gap-1">
+                <button onClick={async()=>{await navigator.clipboard.writeText(script);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs border hover:bg-muted transition-colors">
+                  {copied?<><Check className="h-3 w-3 text-emerald-500"/>{t("copied")}</>:<><Copy className="h-3 w-3"/>{t("copy")}</>}
+                </button>
+                <button onClick={download} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs border hover:bg-muted transition-colors">
+                  <Download className="h-3 w-3"/>.txt
+                </button>
+              </div>
+            </div>
+            <pre className="whitespace-pre-wrap rounded-xl border bg-muted/30 p-3 text-xs leading-relaxed max-h-64 overflow-y-auto">{script}</pre>
+            <button onClick={downloadVideo} disabled={videoLoading}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-400 bg-violet-500/10 px-3 py-2.5 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all disabled:opacity-50">
+              {videoLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Generating MP4…</> : <><Video className="h-4 w-4"/>Download Slide Video</>}
+            </button>
+            <button onClick={generateDidVideo} disabled={didLoading}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-pink-400 bg-pink-500/10 px-3 py-2.5 text-sm font-medium text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-all disabled:opacity-50">
+              {didLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Creating avatar (~60s)…</> : <><span>🤖</span>Generate AI Avatar Video</>}
+            </button>
+            {didVideoUrl && (
+              <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}
+                className="rounded-xl border border-emerald-400/40 bg-emerald-500/5 p-3 space-y-2">
+                <p className="text-xs font-semibold text-emerald-500">✅ Avatar video ready!</p>
+                <a href={didVideoUrl} target="_blank" rel="noopener noreferrer" download="eduswarm_avatar.mp4"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 transition-colors">
+                  <Download className="h-4 w-4"/>Download Avatar MP4
+                </a>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
   { id:"male",   label:"Male",   icon:"👨" },
   { id:"female", label:"Female", icon:"👩" },
   { id:"boy",    label:"Boy",    icon:"👦" },
@@ -944,14 +1174,7 @@ Keep tone engaging and educational. Respond in language: ${lang}.`,
   );
 }
 
-// ─── Animation Panel ──────────────────────────────────────────────────────────
-const CARTOON_STYLES = [
-  { id:"anime",    label:"Anime",        icon:"⛩️",  color:"text-red-500",    bg:"bg-red-500/10"    },
-  { id:"tomjerry", label:"Tom & Jerry",  icon:"🐭",  color:"text-yellow-500", bg:"bg-yellow-500/10" },
-  { id:"dora",     label:"Dora",         icon:"🗺️",  color:"text-orange-500", bg:"bg-orange-500/10" },
-  { id:"doraemon", label:"Doraemon",     icon:"🤖",  color:"text-blue-500",   bg:"bg-blue-500/10"   },
-  { id:"heidi",    label:"Heidi",        icon:"⛰️",  color:"text-green-500",  bg:"bg-green-500/10"  },
-];
+// ─── Language Panel ───────────────────────────────────────────────────────────
 
 function AnimationPanel({ topic: initTopic, lang }: { topic: string; lang: string }) {
   const { t } = useLanguage();
@@ -1210,7 +1433,6 @@ export function ToolsSidebar({ currentTopic }: ToolsSidebarProps) {
     { id:"code",      icon:Code2,        label:t("tool_code"),      color:"text-emerald-500", bg:"bg-emerald-500/10", desc:t("desc_code")      },
     { id:"mp3",       icon:Music,        label:t("tool_mp3"),       color:"text-pink-500",    bg:"bg-pink-500/10",    desc:t("desc_mp3")       },
     { id:"mp4",       icon:Video,        label:t("tool_mp4"),       color:"text-violet-500",  bg:"bg-violet-500/10",  desc:t("desc_mp4")       },
-    { id:"animated",  icon:Clapperboard, label:t("tool_animation"), color:"text-yellow-500",  bg:"bg-yellow-500/10",  desc:t("desc_animation") },
     { id:"language",  icon:Globe,        label:t("tool_language"),  color:"text-cyan-500",    bg:"bg-cyan-500/10",    desc:t("desc_language")  },
   ];
 
@@ -1297,7 +1519,6 @@ export function ToolsSidebar({ currentTopic }: ToolsSidebarProps) {
               {activeTool==="code"      && <CodePanel      topic={topic}/>}
               {activeTool==="mp3"       && <MP3Panel       topic={topic} lang={lang}/>}
               {activeTool==="mp4"       && <VideoPanel     topic={topic} lang={lang}/>}
-              {activeTool==="animated"  && <AnimationPanel topic={topic} lang={lang}/>}
               {activeTool==="language"  && <LanguagePanel/>}
             </div>
 
