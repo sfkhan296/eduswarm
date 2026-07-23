@@ -130,7 +130,10 @@ export default function ProfilePage() {
           fetch(`${API_BASE}/api/v1/history/`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${API_BASE}/api/v1/preferences/`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
-        if (sessRes.ok) setSessions(await sessRes.json());
+        if (sessRes.ok) {
+          const sessData = await sessRes.json();
+          setSessions(Array.isArray(sessData) ? sessData : sessData.sessions ?? []);
+        }
         if (prefRes.ok) {
           const prefs = await prefRes.json();
           if (prefs.gamification) setGamification(prefs.gamification);
