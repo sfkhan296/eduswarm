@@ -937,23 +937,29 @@ Keep tone engaging and educational. Respond in language: ${lang}.`;
               </div>
             </div>
             <pre className="whitespace-pre-wrap rounded-xl border bg-muted/30 p-3 text-xs leading-relaxed max-h-64 overflow-y-auto">{script}</pre>
-            <button onClick={downloadVideo} disabled={videoLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-400 bg-violet-500/10 px-3 py-2.5 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all disabled:opacity-50">
-              {videoLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Generating MP4…</> : <><Video className="h-4 w-4"/>Download Slide Video</>}
-            </button>
-            <button onClick={generateDidVideo} disabled={didLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-pink-400 bg-pink-500/10 px-3 py-2.5 text-sm font-medium text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-all disabled:opacity-50">
-              {didLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Creating avatar (~60s)…</> : <><span>🤖</span>Generate AI Avatar Video</>}
-            </button>
-            {didVideoUrl && (
-              <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}
-                className="rounded-xl border border-emerald-400/40 bg-emerald-500/5 p-3 space-y-2">
-                <p className="text-xs font-semibold text-emerald-500">✅ Avatar video ready!</p>
-                <a href={didVideoUrl} target="_blank" rel="noopener noreferrer" download="eduswarm_avatar.mp4"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 transition-colors">
-                  <Download className="h-4 w-4"/>Download Avatar MP4
-                </a>
-              </motion.div>
+            {videoType === "original" && (
+              <button onClick={downloadVideo} disabled={videoLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-400 bg-violet-500/10 px-3 py-2.5 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-all disabled:opacity-50">
+                {videoLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Generating MP4…</> : <><Video className="h-4 w-4"/>Download Slide Video</>}
+              </button>
+            )}
+            {videoType === "animated" && (
+              <>
+                <button onClick={generateDidVideo} disabled={didLoading}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-pink-400 bg-pink-500/10 px-3 py-2.5 text-sm font-medium text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-all disabled:opacity-50">
+                  {didLoading ? <><Loader2 className="h-4 w-4 animate-spin"/>Please wait, generating avatar video…</> : <><span>🤖</span>Generate AI Avatar Video</>}
+                </button>
+                {didVideoUrl && (
+                  <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}
+                    className="rounded-xl border border-emerald-400/40 bg-emerald-500/5 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-emerald-500">✅ Avatar video ready!</p>
+                    <a href={didVideoUrl} target="_blank" rel="noopener noreferrer" download="eduswarm_avatar.mp4"
+                      className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 transition-colors">
+                      <Download className="h-4 w-4"/>Download Avatar MP4
+                    </a>
+                  </motion.div>
+                )}
+              </>
             )}
           </motion.div>
         )}
