@@ -1,16 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Loader2, Mic, MicOff } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  Mic,
+  MicOff,
+  Paperclip,
+  X,
+  FileText,
+  Image as ImageIcon,
+  SlidersHorizontal,
+  Check,
+} from "lucide-react";
 import { useSTT } from "@/hooks/useSpeech";
-
 import { useLanguage } from "@/context/LanguageContext";
 
+export interface PromptSubmitOptions {
+  documentText?: string;
+  formatPreference?: "auto" | "bullets" | "paragraphs" | "step_by_step" | "qa";
+  depthLevel?: "auto" | "overview" | "detailed" | "hands_on";
+}
+
 interface PromptInputProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, options?: PromptSubmitOptions) => void;
   isLoading: boolean;
   defaultValue?: string;
 }
@@ -21,51 +37,188 @@ const EXAMPLE_PROMPTS = [
   "Help me understand React hooks as a professional.",
   "What is quantum computing?",
   "Explain DNA replication simply.",
-  "Why does my code never work on the first try? 😭",
   "Teach me calculus like I'm a golden retriever 🐕",
-  "What even IS the mitochondria?",
   "Explain the stock market without making me cry 📉",
-  "Make photosynthesis sound as cool as it actually is 🌱",
 ];
+
+const FORMAT_OPTIONS = [
+  { id: "auto", label: "Auto Format", icon: "✨" },
+  { id: "bullets", label: "Bullet Points", icon: "📌" },
+  { id: "paragraphs", label: "Paragraphs", icon: "📄" },
+  { id: "step_by_step", label: "Step-by-Step", icon: "🔢" },
+  { id: "qa", label: "Q&A Format", icon: "❓" },
+] as const;
+
+const DEPTH_OPTIONS = [
+  { id: "auto", label: "Auto Depth", icon: "🎯" },
+  { id: "overview", label: "Quick Overview", icon: "💡" },
+  { id: "detailed", label: "Detailed Deep-Dive", icon: "📖" },
+  { id: "hands_on", label: "Hands-on Practical", icon: "🛠️" },
+] as const;
+
+interface AttachedFile {
+  name: string;
+  type: string;
+  size: number;
+  content: string;
+}
 
 export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptInputProps) {
   const { t } = useLanguage();
   const [value, setValue] = useState(defaultValue);
   const [interimText, setInterimText] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [formatPref, setFormatPref] = useState<PromptSubmitOptions["formatPreference"]>("auto");
+  const [depthPref, setDepthPref] = useState<PromptSubmitOptions["depthLevel"]>("auto");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (defaultValue) setValue(defaultValue);
   }, [defaultValue]);
 
-  // When speech is final, set it in the box and auto-submit
   const handleSpeechResult = useCallback((interim: string) => {
     setInterimText(interim);
   }, []);
 
-  const handleSpeechFinal = useCallback((final: string) => {
-    setInterimText("");
-    const trimmed = final.trim();
-    setValue(trimmed);
-    // Auto-submit after a short delay so user sees the text
-    setTimeout(() => {
-      if (trimmed) onSubmit(trimmed);
-    }, 600);
-  }, [onSubmit]);
-
-  const { listening, supported, startListening, stopListening } = useSTT(
-    handleSpeechResult,
-    handleSpeechFinal
+  const handleSpeechFinal = useCallback(
+    (final: string) => {
+      setInterimText("");
+      const trimmed = final.trim();
+      setValue(trimmed);
+      setTimeout(() => {
+        if (trimmed) {
+          onSubmit(trimmed, {
+            documentText: attachedFiles.map((f) => f.content).join("\n\n"),
+            formatPreference: formatPref,
+            depthLevel: depthPref,
+          });
+        }
+      }, 600);
+    },
+    [onSubmit, attachedFiles, formatPref, depthPref]
   );
+
+  const { listening, supported, startListening, stopListening } = useSTT(handleSpeechResult, handleSpeechFinal);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      let extractedContent = "";
+
+      try {
+        if (
+          file.type.startsWith("text/") ||
+          file.name.endsWith(".txt") ||
+          file.name.endsWith(".md") ||
+          file.name.endsWith(".json")
+        ) {
+          // Plain text files — read directly
+          extractedContent = await file.text();
+
+        } else if (
+          file.name.endsWith(".docx") ||
+          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+          // DOCX = ZIP containing word/document.xml
+          // Use JSZip-style approach via ArrayBuffer + DecompressionStream isn't available,
+          // so we unzip manually using the File API + regex on the XML
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8 = new Uint8Array(arrayBuffer);
+
+          // Convert to binary string to search for XML content
+          let binary = "";
+          for (let j = 0; j < uint8.length; j++) {
+            binary += String.fromCharCode(uint8[j]);
+          }
+
+          // Find word/document.xml inside the ZIP
+          // ZIP local file headers start with PK\x03\x04
+          // We search for the document.xml content by finding the filename
+          const docXmlMarker = "word/document.xml";
+          const markerIdx = binary.indexOf(docXmlMarker);
+
+          if (markerIdx !== -1) {
+            // The XML content starts after the local file header
+            // Skip past the marker and find the XML start
+            const xmlStart = binary.indexOf("<?xml", markerIdx);
+            const xmlEnd = binary.indexOf("</w:document>", xmlStart);
+
+            if (xmlStart !== -1 && xmlEnd !== -1) {
+              const xmlContent = binary.substring(xmlStart, xmlEnd + 13);
+              // Extract text from <w:t> tags
+              const textMatches = xmlContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+              extractedContent = textMatches
+                .map((match) => match.replace(/<[^>]+>/g, ""))
+                .join(" ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 8000);
+            }
+          }
+
+          if (!extractedContent) {
+            extractedContent = `[Could not extract text from ${file.name}. Please copy and paste the content directly.]`;
+          }
+
+        } else if (file.type.startsWith("image/")) {
+          extractedContent = `[Attached Image: ${file.name}]`;
+
+        } else if (file.name.endsWith(".pdf")) {
+          extractedContent = `[PDF attached: ${file.name}. Note: PDF text extraction requires backend processing. Consider copying key text and pasting it directly.]`;
+
+        } else {
+          // Last resort — try reading as text
+          const rawText = await file.text();
+          extractedContent = rawText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+        }
+
+        setAttachedFiles((prev) => [
+          ...prev,
+          {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            content: `--- Document Content: ${file.name} ---\n${extractedContent}`,
+          },
+        ]);
+      } catch (err) {
+        console.error("Error reading file:", err);
+      }
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim()) onSubmit(value.trim());
+    if (value.trim()) {
+      const combinedDocText = attachedFiles.map((f) => f.content).join("\n\n");
+      onSubmit(value.trim(), {
+        documentText: combinedDocText || undefined,
+        formatPreference: formatPref,
+        depthLevel: depthPref,
+      });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
-      if (value.trim() && !isLoading) onSubmit(value.trim());
+      if (value.trim() && !isLoading) {
+        const combinedDocText = attachedFiles.map((f) => f.content).join("\n\n");
+        onSubmit(value.trim(), {
+          documentText: combinedDocText || undefined,
+          formatPreference: formatPref,
+          depthLevel: depthPref,
+        });
+      }
     }
   };
 
@@ -86,62 +239,174 @@ export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptIn
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="space-y-3"
+      className="space-y-4"
     >
-      <div className="relative">
+      <div className="relative rounded-2xl border-2 bg-card p-3 shadow-sm transition-colors focus-within:border-primary/50">
         <Textarea
           value={displayValue}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={listening ? "Listening… speak your question" : t("learn_placeholder")}
-          className={`min-h-[120px] resize-none text-base pr-12 rounded-xl border-2 transition-colors
-            ${listening
-              ? "border-red-400 dark:border-red-600 bg-red-50/30 dark:bg-red-950/10 placeholder:text-red-400"
-              : "focus:border-primary/50"}`}
+          className={`min-h-[110px] w-full resize-none border-none bg-transparent p-1 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 ${
+            listening ? "placeholder:text-red-400" : ""
+          }`}
           disabled={isLoading}
           readOnly={listening}
         />
 
-        {/* Mic button inside textarea */}
-        {supported && (
-          <button
-            type="button"
-            onClick={toggleMic}
-            disabled={isLoading}
-            className={`absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full transition-all
-              ${listening
-                ? "bg-red-500 text-white shadow-lg shadow-red-500/40 animate-pulse"
-                : "bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground"}`}
-            title={listening ? "Stop listening" : "Speak your prompt"}
-          >
-            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </button>
+        {/* Attached Files Badges */}
+        {attachedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            {attachedFiles.map((file, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary border border-primary/20"
+              >
+                {file.type.startsWith("image/") ? (
+                  <ImageIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5" />
+                )}
+                <span className="truncate max-w-[140px]">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(idx)}
+                  className="hover:text-destructive transition-colors ml-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
 
-        <p className="absolute bottom-2 right-3 text-xs text-muted-foreground/60 select-none">
-          {listening ? "" : "⌘+Enter to send"}
-        </p>
+        {/* Action bar inside textarea box */}
+        <div className="flex items-center justify-between pt-2 mt-1 border-t border-muted/50">
+          <div className="flex items-center gap-2">
+            {/* File Upload Button */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              multiple
+              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg"
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="gap-1.5 text-xs text-muted-foreground hover:text-primary rounded-lg"
+              title="Upload PDF, Image, or Document"
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              <span>Attach File</span>
+            </Button>
+
+            {/* Advanced Preferences Toggle */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`gap-1.5 text-xs rounded-lg transition-colors ${
+                showAdvanced || formatPref !== "auto" || depthPref !== "auto"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Options</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {supported && (
+              <button
+                type="button"
+                onClick={toggleMic}
+                disabled={isLoading}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                  listening
+                    ? "bg-red-500 text-white shadow-lg shadow-red-500/40 animate-pulse"
+                    : "bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground"
+                }`}
+                title={listening ? "Stop listening" : "Speak your prompt"}
+              >
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
+
+            <p className="text-xs text-muted-foreground/60 select-none hidden sm:block">⌘+Enter</p>
+          </div>
+        </div>
       </div>
 
-      {/* Listening indicator */}
+      {/* Advanced Formatting & Specificity Options Panel */}
       <AnimatePresence>
-        {listening && (
+        {showAdvanced && (
           <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="flex items-center gap-2 text-sm text-red-500"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden rounded-xl border bg-muted/30 p-4 space-y-4 text-xs"
           >
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
-            </span>
-            Listening… speak clearly, then pause
+            {/* Format Selection */}
+            <div className="space-y-1.5">
+              <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+                Answer Format (Points / Paragraphs)
+              </span>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {FORMAT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setFormatPref(opt.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all ${
+                      formatPref === opt.id
+                        ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm"
+                        : "bg-background hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
+                    {formatPref === opt.id && <Check className="h-3 w-3 ml-1" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Depth Selection */}
+            <div className="space-y-1.5 border-t pt-3">
+              <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+                Topic Specificity & Depth
+              </span>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {DEPTH_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setDepthPref(opt.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all ${
+                      depthPref === opt.id
+                        ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm"
+                        : "bg-background hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
+                    {depthPref === opt.id && <Check className="h-3 w-3 ml-1" />}
+                  </button>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Example prompts */}
+      {/* Example Prompts */}
       {!listening && (
         <div className="flex flex-wrap gap-2">
           {EXAMPLE_PROMPTS.map((p) => (
@@ -158,12 +423,13 @@ export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptIn
         </div>
       )}
 
+      {/* Submit Button */}
       <div className="flex items-center gap-3">
         <Button
           type="submit"
-          disabled={isLoading || !value.trim() || listening}
+          disabled={isLoading || (!value.trim() && attachedFiles.length === 0) || listening}
           size="lg"
-          className="gap-2 shadow-md shadow-primary/20"
+          className="gap-2 shadow-md shadow-primary/20 rounded-xl"
         >
           {isLoading ? (
             <>
@@ -173,18 +439,10 @@ export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptIn
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              {t("learn_start_btn")}
+              {t("learn_btn")}
             </>
           )}
         </Button>
-
-        {supported && (
-          <p className="text-xs text-muted-foreground">
-            or <button type="button" onClick={toggleMic} className="text-primary underline underline-offset-2">
-              {listening ? "stop mic" : "use mic"}
-            </button>
-          </p>
-        )}
       </div>
     </motion.form>
   );
