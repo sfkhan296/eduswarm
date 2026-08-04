@@ -106,6 +106,9 @@ export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptIn
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Use the proxy path so it works on both local and Vercel
+    const EXTRACT_URL = "/api/backend/api/v1/extract/";
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       let extractedContent = "";
@@ -117,81 +120,74 @@ export function PromptInput({ onSubmit, isLoading, defaultValue = "" }: PromptIn
           file.name.endsWith(".md") ||
           file.name.endsWith(".json")
         ) {
-          // Plain text files — read directly
+          // Plain text — read directly in browser, no backend needed
           extractedContent = await file.text();
-
-        } else if (
-          file.name.endsWith(".docx") ||
-          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ) {
-          // DOCX = ZIP containing word/document.xml
-          // Use JSZip-style approach via ArrayBuffer + DecompressionStream isn't available,
-          // so we unzip manually using the File API + regex on the XML
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8 = new Uint8Array(arrayBuffer);
-
-          // Convert to binary string to search for XML content
-          let binary = "";
-          for (let j = 0; j < uint8.length; j++) {
-            binary += String.fromCharCode(uint8[j]);
-          }
-
-          // Find word/document.xml inside the ZIP
-          // ZIP local file headers start with PK\x03\x04
-          // We search for the document.xml content by finding the filename
-          const docXmlMarker = "word/document.xml";
-          const markerIdx = binary.indexOf(docXmlMarker);
-
-          if (markerIdx !== -1) {
-            // The XML content starts after the local file header
-            // Skip past the marker and find the XML start
-            const xmlStart = binary.indexOf("<?xml", markerIdx);
-            const xmlEnd = binary.indexOf("</w:document>", xmlStart);
-
-            if (xmlStart !== -1 && xmlEnd !== -1) {
-              const xmlContent = binary.substring(xmlStart, xmlEnd + 13);
-              // Extract text from <w:t> tags
-              const textMatches = xmlContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-              extractedContent = textMatches
-                .map((match) => match.replace(/<[^>]+>/g, ""))
-                .join(" ")
-                .replace(/\s+/g, " ")
-                .trim()
-                .slice(0, 8000);
-            }
-          }
-
-          if (!extractedContent) {
-            extractedContent = `[Could not extract text from ${file.name}. Please copy and paste the content directly.]`;
-          }
-
-        } else if (file.type.startsWith("image/")) {
-          extractedContent = `[Attached Image: ${file.name}]`;
-
-        } else if (file.name.endsWith(".pdf")) {
-          extractedContent = `[PDF attached: ${file.name}. Note: PDF text extraction requires backend processing. Consider copying key text and pasting it directly.]`;
-
-        } else {
-          // Last resort — try reading as text
-          const rawText = await file.text();
-          extractedContent = rawText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+          setAttachedFiles((prev) => [
+            ...prev,
+            {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              content: `--- Document Content: ${file.name} ---\n${extractedContent}`,
+            },
+          ]);
+          continue;
         }
 
+        // All other files (.docx, .pdf, images) — send to backend extract endpoint
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const res = await fetch(EXTRACT_URL, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            extractedContent = data.text;
+          } else {
+            const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+            console.error("Extract failed:", err);
+            // Don't attach failed extractions — show user an alert instead
+            alert(`Could not read ${file.name}: ${err.detail}`);
+            continue;
+          }
+        } catch (fetchErr) {
+          console.error("Extract fetch error:", fetchErr);
+          alert(`Could not connect to backend to read ${file.name}. Make sure the backend is running.`);
+          continue;
+        }
+
+        const label = file.type.startsWith("image/") ? "Image Content" : "Document Content";
         setAttachedFiles((prev) => [
           ...prev,
           {
             name: file.name,
             type: file.type,
             size: file.size,
-            content: `--- Document Content: ${file.name} ---\n${extractedContent}`,
+            content: `--- ${label}: ${file.name} ---\n${extractedContent}`,
           },
         ]);
+
       } catch (err) {
-        console.error("Error reading file:", err);
+        console.error("Error processing file:", err);
+        setAttachedFiles((prev) => [
+          ...prev,
+          {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            content: `[Error reading ${file.name}. Please paste the content directly.]`,
+          },
+        ]);
       }
     }
-  };
 
+    // Reset input so same file can be re-uploaded
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
   const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };

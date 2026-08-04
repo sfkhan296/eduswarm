@@ -2,6 +2,10 @@
 
 export interface LearningRequest {
   prompt: string;
+  language?: string;
+  document_text?: string;
+  format_preference?: "auto" | "bullets" | "paragraphs" | "step_by_step" | "qa";
+  depth_level?: "auto" | "overview" | "detailed" | "hands_on";
 }
 
 // ─── Learner Analysis Agent Output ──────────────────────────────────────────

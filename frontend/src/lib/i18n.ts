@@ -455,5 +455,6 @@ export const TRANSLATIONS: Record<LangCode, UIStrings> = {
 };
 
 export function t(lang: LangCode, key: keyof UIStrings): string {
-  return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.en[key] ?? key;
+  const val = TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.en[key] ?? key;
+  return Array.isArray(val) ? val.join(" ") : String(val);
 }

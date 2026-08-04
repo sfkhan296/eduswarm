@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # D-ID
     did_api_key: str = ""
 
+    # OCR.space (free image text extraction)
+    ocr_api_key: str = "helloworld"  # default free key, limited to low-res images
+
     # App
     app_env: str = "development"
     log_level: str = "INFO"
@@ -56,8 +59,18 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins_list(self) -> list[str]:
-        """Returns allowed_origins as a list, splitting on commas if needed."""
-        return [o.strip() for o in self.allowed_origins.split(",")]
+        """Returns allowed_origins as a list, splitting on commas if needed.
+        Also always allows all *.vercel.app and localhost origins."""
+        origins = [o.strip() for o in self.allowed_origins.split(",")]
+        # Always allow localhost for development
+        extras = ["http://localhost:3000", "http://localhost:3001"]
+        return list(set(origins + extras))
+
+
+    @property
+    def cors_allow_origin_regex(self) -> str:
+        """Regex to allow all Vercel preview deployments."""
+        return r"https://.*\.vercel\.app"
 
 
 @lru_cache

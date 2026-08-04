@@ -48,7 +48,7 @@ export function useTTS() {
 export function useSTT(onResult: (text: string) => void, onFinal: (text: string) => void) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -70,7 +70,7 @@ export function useSTT(onResult: (text: string) => void, onFinal: (text: string)
     recognition.onend = () => setListening(false);
     recognition.onerror = () => setListening(false);
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: any) => {
       let interim = "";
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {

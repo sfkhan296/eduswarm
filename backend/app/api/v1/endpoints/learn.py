@@ -28,7 +28,14 @@ async def learn(
     logger.info("Learning request from user=%s prompt=%r", user_id, body.prompt)
 
     try:
-        result = await run_learning_crew(prompt=body.prompt, user_id=user_id, language=body.language)
+        result = await run_learning_crew(
+            prompt=body.prompt,
+            user_id=user_id,
+            language=body.language,
+            document_text=body.document_text,
+            format_preference=body.format_preference or "auto",
+            depth_level=body.depth_level or "auto",
+        )
     except Exception as exc:
         logger.exception("Agent crew failed for user=%s", user_id)
         raise HTTPException(

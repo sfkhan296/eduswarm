@@ -6,6 +6,7 @@ node_modules/
 # Next.js
 frontend/.next/
 frontend/out/
+frontend/tsconfig.tsbuildinfo
 
 # Python
 __pycache__/

@@ -180,6 +180,23 @@ def _normalise_content(raw_list: Any) -> list[dict]:
         for k, v in item.items():
             canonical = _CONTENT_KEY_MAP.get(k) or _CONTENT_KEY_MAP.get(k.lower())
             normalised[canonical or k] = v
+
+        # Coerce body to string if the LLM returned a list
+        if isinstance(normalised.get("body"), list):
+            normalised["body"] = "\n".join(
+                str(x) for x in normalised["body"]
+            )
+        # Coerce title to string if needed
+        if isinstance(normalised.get("title"), list):
+            normalised["title"] = " ".join(str(x) for x in normalised["title"])
+        # Coerce code_example to string if needed
+        if isinstance(normalised.get("code_example"), list):
+            normalised["code_example"] = "\n".join(
+                str(x) for x in normalised["code_example"]
+            )
+        elif isinstance(normalised.get("code_example"), dict):
+            normalised["code_example"] = normalised["code_example"].get("code") or str(normalised["code_example"])
+
         # Only keep entries that have the required fields
         if normalised.get("title") and normalised.get("body"):
             result.append(normalised)
@@ -249,7 +266,14 @@ def _kickoff_raw(crew: Crew, max_retries: int = 3) -> str:
                 raise
 
 
-async def run_learning_crew(prompt: str, user_id: str, language: str = "en") -> LearningResponse:
+async def run_learning_crew(
+    prompt: str,
+    user_id: str,
+    language: str = "en",
+    document_text: str | None = None,
+    format_preference: str = "auto",
+    depth_level: str = "auto",
+) -> LearningResponse:
     """
     Run the full EduSwarm crew pipeline and return a validated LearningResponse.
     The crew runs synchronously inside an executor to avoid blocking the event loop.
@@ -285,7 +309,17 @@ async def run_learning_crew(prompt: str, user_id: str, language: str = "en") -> 
         # ── Step 2: Content Generation ───────────────────────────────────────
         content_crew = Crew(
             agents=[content_agent],
-            tasks=[build_content_generation_task(content_agent, prompt, level, effective_language)],
+            tasks=[
+                build_content_generation_task(
+                    content_agent,
+                    prompt,
+                    level,
+                    effective_language,
+                    document_text=document_text,
+                    format_preference=format_preference,
+                    depth_level=depth_level,
+                )
+            ],
             process=Process.sequential,
             verbose=False,
         )
@@ -293,6 +327,20 @@ async def run_learning_crew(prompt: str, user_id: str, language: str = "en") -> 
         content_sections = [ContentSection(**s) for s in _normalise_content(content_data)]
         if not content_sections:
             raise ValueError("Content generation produced no valid sections.")
+
+        # If a document was uploaded, merge all sections into one comprehensive section
+        if document_text and document_text.strip() and len(content_sections) > 1:
+            merged_body = "\n\n".join(
+                f"**{s.title}**\n{s.body}" for s in content_sections
+            )
+            merged_code = next(
+                (s.code_example for s in content_sections if s.code_example), None
+            )
+            content_sections = [ContentSection(
+                title=content_sections[0].title,
+                body=merged_body,
+                code_example=merged_code,
+            )]
 
         # ── Step 3: Quiz Generation ──────────────────────────────────────────
         quiz_crew = Crew(

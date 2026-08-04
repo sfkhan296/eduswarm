@@ -32,12 +32,13 @@ def build_quiz_generation_task(
 
     return Task(
         description=(
-            f"Generate 3–5 multiple-choice quiz questions testing knowledge of: {prompt}\n\n"
-            f"Difficulty should match a {learner_level} learner."
+            f"Generate exactly 5 multiple-choice quiz questions testing knowledge of: {prompt}\n\n"
+            f"Difficulty should match a {learner_level} learner. "
+            f"Each question must test a different concept — no repetition."
             f"{lang_instruction}\n\n"
-            f"Return ONLY a valid JSON array:\n"
+            f"Return ONLY a valid JSON array of exactly 5 questions:\n"
             f"{QUIZ_OUTPUT_TEMPLATE}"
         ),
-        expected_output="A JSON array of quiz question objects.",
+        expected_output="A JSON array of exactly 5 quiz question objects.",
         agent=agent,
     )

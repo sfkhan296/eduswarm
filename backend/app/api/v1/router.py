@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import learn, history, chat, tts, video, did_video, preferences
+from app.api.v1.endpoints import learn, history, chat, tts, video, did_video, preferences, image, extract
 
 api_router = APIRouter()
 
@@ -10,3 +10,5 @@ api_router.include_router(tts.router,          prefix="/tts",         tags=["tts
 api_router.include_router(video.router,        prefix="/video",       tags=["video"])
 api_router.include_router(did_video.router,    prefix="/did-video",   tags=["did-video"])
 api_router.include_router(preferences.router,  prefix="/preferences", tags=["preferences"])
+api_router.include_router(image.router,        prefix="/image",       tags=["image"])
+api_router.include_router(extract.router,      prefix="/extract",     tags=["extract"])

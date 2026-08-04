@@ -10,10 +10,17 @@ class LearningRequest(BaseModel):
     prompt: str = Field(
         ...,
         min_length=3,
-        max_length=500,
+        max_length=5000,
         examples=["Teach me Java.", "Explain machine learning to a 10-year-old."],
     )
     language: str = Field(default="en", description="ISO 639-1 language code chosen by the user.")
+    document_text: Optional[str] = Field(default=None, description="Extracted text from uploaded documents/PDFs/images.")
+    format_preference: Optional[Literal["auto", "bullets", "paragraphs", "step_by_step", "qa"]] = Field(
+        default="auto", description="Preferred answering format (e.g. bullets vs paragraphs)."
+    )
+    depth_level: Optional[Literal["auto", "overview", "detailed", "hands_on"]] = Field(
+        default="auto", description="Target topic specificity depth."
+    )
 
 
 # ─── Learner Analysis Agent ──────────────────────────────────────────────────

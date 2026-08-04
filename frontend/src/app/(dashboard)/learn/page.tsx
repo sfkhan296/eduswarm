@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PromptInput } from "@/components/learn/PromptInput";
+import { PromptInput, PromptSubmitOptions } from "@/components/learn/PromptInput";
 import { LearningSession } from "@/components/learn/LearningSession";
 import { AgentStatusBar } from "@/components/learn/AgentStatusBar";
 import { SessionHistorySidebar } from "@/components/layout/SessionHistorySidebar";
@@ -17,7 +17,7 @@ export default function LearnPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPrompt, setCurrentPrompt] = useState("");
 
-  const handleSubmit = async (prompt: string) => {
+  const handleSubmit = async (prompt: string, options?: PromptSubmitOptions) => {
     setIsLoading(true);
     setError(null);
     setResponse(null);
@@ -30,8 +30,13 @@ export default function LearnPage() {
       const res = await fetch("/api/backend/api/v1/learn/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Pass the live context language — always in sync
-        body: JSON.stringify({ prompt, language: lang }),
+        body: JSON.stringify({
+          prompt,
+          language: lang,
+          document_text: options?.documentText,
+          format_preference: options?.formatPreference,
+          depth_level: options?.depthLevel,
+        }),
       });
 
       if (!res.ok) throw new Error(`Request failed: ${res.statusText}`);
